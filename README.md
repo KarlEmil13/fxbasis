@@ -1,0 +1,106 @@
+# fxbasis
+
+A Python library for calculating FX swap basis spreads (CIP deviations).
+
+The basis measures the deviation from Covered Interest Rate Parity (CIP): it compares the implied base-currency OIS rate derived from the FX swap market against the actual OIS rate, yielding the spread in basis points. A persistently negative basis indicates a USD funding premium — market participants pay above CIP to borrow USD via FX swaps.
+
+## Installation
+
+```bash
+pip install -e .
+
+# With Bloomberg terminal support (requires blpapi)
+pip install -e ".[bloomberg]"
+```
+
+**Requirements:** Python >= 3.11, numpy, scipy, pandas, python-dateutil, pyyaml
+
+## Quick Start
+
+```python
+from datetime import datetime
+from fxbasis import FXSwapBasis, OISCurve
+from fxbasis.providers import StaticProvider
+
+AS_OF = datetime(2025, 5, 9, 10, 0, 0)
+
+provider = StaticProvider(
+    as_of=AS_OF,
+    spot={"EURUSD": 1.0850},
+    swap_points={
+        "EURUSD": {"ON": 0.4, "1W": 3.1, "1M": 14.0, "3M": 47.2, "6M": 101.0, "1Y": 210.6}
+    },
+    pip_scale={"EURUSD": 4},
+    ois_rates={
+        "USD": {"ON": 0.0530, "1M": 0.0528, "3M": 0.0520, "6M": 0.0505, "1Y": 0.0475},
+        "EUR": {"ON": 0.0390, "1M": 0.0385, "3M": 0.0365, "6M": 0.0340, "1Y": 0.0305},
+    },
+    meeting_ois_rates={"USD": {}, "EUR": {}},
+)
+
+eurusd = FXSwapBasis("EUR", "USD", provider)
+
+# Single-tenor basis
+print(eurusd.basis_bps("3M"))    # e.g. -12.4 bps
+print(eurusd.implied_rate("3M")) # implied EUR funding rate
+
+# Full curve with PCHIP interpolation
+curve = eurusd.curve()
+print(curve.to_series())         # basis at all tenor knots
+print(curve.at("2M"))            # interpolated at arbitrary tenor
+print(curve.forward_basis("3M", "6M"))  # time-weighted forward basis
+
+# Update to latest market data
+eurusd.refresh()
+```
+
+## Calculation
+
+For tenor $T$, the CIP basis is:
+
+$$B(T) = \left(r^{\text{impl}}_{\text{base}}(T) - r^{\text{actual}}_{\text{base}}(T)\right) \times 10{,}000 \text{ bps}$$
+
+where the implied base rate is derived from the forward outright:
+
+$$F = S + \frac{\text{swap points}}{\text{pip scale}}, \qquad r^{\text{impl}}_{\text{base}} = \left[(1 + r_{\text{quote}} \cdot T) \cdot \frac{S}{F} - 1\right] / T$$
+
+OIS rates use Bloomberg compounded convention. Discount factors are interpolated log-linearly (piecewise-constant instantaneous forwards). The basis curve uses PCHIP interpolation — monotone-preserving and C¹ continuous with flat extrapolation beyond the outer knots.
+
+## Meeting-Dated OIS
+
+For a more precise short-end curve, pass central bank meeting-effective dates as OIS knots. These override the corresponding standard tenor knots:
+
+```python
+provider = StaticProvider(
+    ...
+    meeting_ois_rates={
+        "USD": {"2025-06-11": 0.0535, "2025-07-30": 0.0525},
+        "EUR": {"2025-06-11": 0.0388, "2025-07-23": 0.0375},
+    },
+)
+```
+
+## Data Providers
+
+The `DataProvider` protocol defines the interface for market data. Swap in any implementation:
+
+| Provider | Status | Use case |
+|---|---|---|
+| `StaticProvider` | Available | Testing, manual snapshots, demo |
+| `BloombergProvider` | Not yet implemented | Live Bloomberg terminal data |
+
+Bloomberg ticker mappings and day count conventions are configured in `config.yaml`.
+
+## Supported Currencies
+
+USD (SOFR, ACT/360), EUR (€STR, ACT/360), GBP (SONIA, ACT/365), JPY (TONAR, ACT/360), NOK, SEK.
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+python -m pytest tests/ -v
+python -m pytest tests/ --cov=fxbasis
+```
+
+See `demo.ipynb` for a full end-to-end walkthrough including OIS curve inspection, basis curve plots, forward basis, and spot sensitivity analysis.
