@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fxbasis"
+version = "0.1.0"
+description = "FX swap basis calculation library"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "python-dateutil",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+bloomberg = ["blpapi"]
+dev = ["pytest", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fxbasis*"]

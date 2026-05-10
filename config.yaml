@@ -1,0 +1,39 @@
+pairs:
+  EURUSD:
+    spot_ticker: "EURUSD Curncy"
+    swap_point_tickers:           # PX_LAST — all placeholders, verify on terminal
+      ON:  "EURDRON Curncy"
+      1W:  "EURUSDSW Curncy"
+      1M:  "EURUSD1M Curncy"
+      3M:  "EURUSD3M Curncy"
+      6M:  "EURUSD6M Curncy"
+      9M:  "EURUSD9M Curncy"
+      1Y:  "EURUSD1Y Curncy"
+    pip_scale: 4                  # 4 decimal places (divide raw pips by 10,000)
+
+currencies:
+  USD:
+    day_count: "ACT/360"
+    ois_tickers:
+      meeting_dated:              # Priority 1: Fed meeting-dated SOFR OIS (verify format)
+        pattern: "USOSFR{DATE} Curncy"
+      fallback:                   # Priority 2: Standard tenor SOFR OIS
+        ON:  "USOSFR1Z Curncy"
+        1M:  "USOSFR1Z Curncy"
+        3M:  "USOSFR3Z Curncy"
+        6M:  "USOSFR6Z Curncy"
+        9M:  "USOSFR9Z Curncy"
+        1Y:  "USOSFR12Z Curncy"
+
+  EUR:
+    day_count: "ACT/360"
+    ois_tickers:
+      meeting_dated:              # Priority 1: ECB meeting-dated ESTR OIS (verify format)
+        pattern: "EUSWEC{DATE} Curncy"
+      fallback:                   # Priority 2: Standard tenor ESTR OIS
+        ON:  "EUSWECN Curncy"
+        1M:  "EUSWEC1 Curncy"
+        3M:  "EUSWEC3 Curncy"
+        6M:  "EUSWEC6 Curncy"
+        9M:  "EUSWEC9 Curncy"
+        1Y:  "EUSWEC12 Curncy"
