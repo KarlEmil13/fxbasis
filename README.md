@@ -121,6 +121,43 @@ with provider:
 
 Bloomberg tickers are configured in `config.yaml`. OIS par rates are expected in percentage terms from Bloomberg (e.g. `5.20` → stored as `0.0520`). Meeting-dated OIS tickers use the `%m/%d/%y` date format (e.g. `06/11/25`) substituted into the pattern — verify against a live terminal before use.
 
+## Multi-Pair Registry
+
+`BasisMarket` holds multiple `FXSwapBasis` instances and synthesises non-USD cross-pair basis on demand by triangulating through USD.
+
+```python
+from fxbasis import FXSwapBasis, BasisMarket
+
+eurusd = FXSwapBasis("EUR", "USD", eur_provider)
+gbpusd = FXSwapBasis("GBP", "USD", gbp_provider)
+usdjpy = FXSwapBasis("USD", "JPY", jpy_provider)
+
+market = BasisMarket(eurusd, gbpusd, usdjpy)
+
+# Direct pairs
+market.basis_bps("EURUSD", "3M")   # from registered FXSwapBasis
+market.curve("GBPUSD")             # BasisCurve
+
+# Cross pairs — triangulated via USD on demand
+market.basis_bps("EURGBP", "3M")   # EUR/USD + GBP/USD → EUR/GBP
+market.basis_bps("EURJPY", "3M")   # EUR/USD + USD/JPY → EUR/JPY
+market.curve("EURGBP")             # BasisCurve at common tenors
+
+# Summary DataFrame (pairs × tenors), cross pairs included
+market.summary(pairs=["EURUSD", "GBPUSD", "EURGBP"])
+
+market.refresh_all()               # re-fetch all registered pairs
+```
+
+Two triangulation configurations are supported:
+
+| Registered legs | Cross derived | Approximation |
+|---|---|---|
+| X/USD + Y/USD | X/Y | `basis_XY ≈ basis_XUSD − basis_YUSD` |
+| X/USD + USD/Y | X/Y | `basis_XY ≈ basis_XUSD + basis_USDY` |
+
+The computed basis is exact (not the first-order approximation), using the no-arbitrage forward curve relationship between the two USD legs.
+
 ## Supported Currencies
 
 USD (SOFR, ACT/360), EUR (€STR, ACT/360), GBP (SONIA, ACT/365), JPY (TONAR, ACT/360), NOK, SEK.
