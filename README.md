@@ -84,12 +84,42 @@ provider = StaticProvider(
 
 The `DataProvider` protocol defines the interface for market data. Swap in any implementation:
 
-| Provider | Status | Use case |
-|---|---|---|
-| `StaticProvider` | Available | Testing, manual snapshots, demo |
-| `BloombergProvider` | Not yet implemented | Live Bloomberg terminal data |
+| Provider | Use case |
+|---|---|
+| `StaticProvider` | Testing, manual snapshots, demo |
+| `BloombergProvider` | Live Bloomberg terminal data |
 
-Bloomberg ticker mappings and day count conventions are configured in `config.yaml`.
+### BloombergProvider
+
+Fetches all market data in a single batch `ReferenceDataRequest` for a consistent snapshot. Requires `blpapi` and an active Bloomberg terminal connection.
+
+```python
+import yaml
+from datetime import date
+from fxbasis.providers import BloombergProvider
+from fxbasis import FXSwapBasis
+
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+provider = BloombergProvider(
+    config=cfg,
+    pairs=["EURUSD"],
+    currencies=["EUR", "USD"],
+    # Optional: fetch meeting-dated OIS for a more precise short-end curve
+    meeting_dates={
+        "USD": [date(2025, 6, 11), date(2025, 7, 30)],
+        "EUR": [date(2025, 6, 11), date(2025, 7, 23)],
+    },
+)
+
+with provider:
+    eurusd = FXSwapBasis("EUR", "USD", provider)
+    print(eurusd.basis_bps("3M"))
+    provider.refresh()  # re-fetch latest prices
+```
+
+Bloomberg tickers are configured in `config.yaml`. OIS par rates are expected in percentage terms from Bloomberg (e.g. `5.20` → stored as `0.0520`). Meeting-dated OIS tickers use the `%m/%d/%y` date format (e.g. `06/11/25`) substituted into the pattern — verify against a live terminal before use.
 
 ## Supported Currencies
 

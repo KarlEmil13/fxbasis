@@ -58,7 +58,7 @@ FXSwapBasis(base, quote, provider)
 - **`fxbasis/conventions/`** — `DayCount` enum (ACT/360, ACT/365, ACT/ACT ISDA) and `CURRENCY_CONVENTIONS` dict mapping ISO codes to day count + calendar.
 - **`fxbasis/providers/base.py`** — `DataProvider` Protocol defining the interface all providers must implement.
 - **`fxbasis/providers/static.py`** — `StaticProvider`: accepts all market data at construction; used in tests and for manual snapshots.
-- **`fxbasis/providers/bloomberg.py`** — `BloombergProvider`: skeleton only, raises `NotImplementedError`. Bloomberg ticker patterns and conventions are configured in `config.yaml`.
+- **`fxbasis/providers/bloomberg.py`** — `BloombergProvider`: batch-fetches all market data in a single `ReferenceDataRequest` on `connect()`/`refresh()`. Supports context manager usage. OIS rates are converted from Bloomberg percentage to decimal on ingestion. Meeting-dated tickers use `%m/%d/%y` date substitution into the pattern from `config.yaml` — verify format on a live terminal.
 - **`fxbasis/market.py`** — `BasisMarket` multi-pair registry; deferred to v2, not yet implemented.
 
 ### Test Fixtures (`tests/conftest.py`)
