@@ -59,12 +59,14 @@ FXSwapBasis(base, quote, provider)
 - **`fxbasis/providers/base.py`** — `DataProvider` Protocol defining the interface all providers must implement.
 - **`fxbasis/providers/static.py`** — `StaticProvider`: accepts all market data at construction; used in tests and for manual snapshots.
 - **`fxbasis/providers/bloomberg.py`** — `BloombergProvider`: batch-fetches all market data in a single `ReferenceDataRequest` on `connect()`/`refresh()`. Supports context manager usage. OIS rates are converted from Bloomberg percentage to decimal on ingestion. Meeting-dated tickers use `%m/%d/%y` date substitution into the pattern from `config.yaml` — verify format on a live terminal.
-- **`fxbasis/market.py`** — `BasisMarket` multi-pair registry; deferred to v2, not yet implemented.
+- **`fxbasis/market.py`** — `BasisMarket`: registry of `FXSwapBasis` instances. Direct pairs looked up from the registry; non-USD crosses triangulated via USD on demand using an exact no-arbitrage formula (not first-order approximation). Two configurations: `X/USD + Y/USD → X/Y` and `X/USD + USD/Y → X/Y`. Methods: `add()`, `remove()`, `basis_bps()`, `curve()`, `refresh_all()`, `summary()`. Module-level helpers `_split_pair()` and `_cross_basis_bps()` keep the triangulation logic out of the class.
 
-### Test Fixtures (`tests/conftest.py`)
+### Test Fixtures
 
-Tests use a realistic EUR/USD snapshot (~May 2025): spot 1.0850, SOFR 5.20–5.30%, ESTR 3.65–3.90%, basis approximately −10 to −20 bps. Two fixture providers are defined: one with standard tenors only, one augmented with meeting-dated OIS rates.
+`tests/conftest.py` provides EUR/USD fixtures (~May 2025): spot 1.0850, SOFR 5.20–5.30%, ESTR 3.65–3.90%, basis approximately −10 to −20 bps. Two providers: standard tenors only, and one augmented with meeting-dated OIS rates.
+
+`tests/test_market.py` defines its own GBP/USD and USD/JPY `StaticProvider` instances inline. The USD/JPY swap points must be calibrated near CIP (≈ −200 pips at 3M for a 5% USD / 0.1% JPY rate differential) — using small values like −47 pips produces a −390 bps basis where first-order approximation tests will fail.
 
 ## Configuration
 
-`config.yaml` defines Bloomberg ticker patterns for spot rates, FX swap points, pip scales, and OIS rates per currency/pair. This file is only relevant once `BloombergProvider` is implemented.
+`config.yaml` defines Bloomberg ticker patterns for spot rates, FX swap points, pip scales, and OIS rates per currency/pair. Used by `BloombergProvider`; not relevant when using `StaticProvider`.
